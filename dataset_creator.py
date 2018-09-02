@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.misc import imread
 import os
-import re
 import pickle
 
 
