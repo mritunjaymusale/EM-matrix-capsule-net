@@ -2,6 +2,7 @@ import numpy as np
 from scipy.misc import imread
 import os
 import pickle
+import cv2
 
 
 traindatasetdirectory = "./smallNORB/train/"
@@ -26,7 +27,7 @@ def properPathCreator(filepath):
 
 def makeTrainingDataset(datasetdirectory):
     files = properPathCreator(datasetdirectory)
-    traindataset = np.asarray([imread(i) for i in files])
+    traindataset = np.asarray([cv2.imread(i, 0) for i in files])
     filenames = filenameExtrator(datasetdirectory)
     labels = labelExtractor(filenames)
     return traindataset, labels
@@ -34,7 +35,7 @@ def makeTrainingDataset(datasetdirectory):
 
 def makeTestingDataset(datasetdirectory):
     files = properPathCreator(datasetdirectory)
-    testdataset = np.asarray([imread(i) for i in files])
+    testdataset = np.asarray([cv2.imread(i, 0) for i in files])
     filenames = filenameExtrator(datasetdirectory)
     labels = labelExtractor(filenames)
     return testdataset, labels
@@ -55,4 +56,5 @@ def main():
     saveFile(test_dataset, filename="testing")
 
 
-main()
+if __name__ == '__main__':
+    main()

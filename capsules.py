@@ -6,18 +6,23 @@ import data_loader
 from numpy import newaxis
 
 
+class Convolution(nn.Module):
+    def __init__(self, ):
+        super(Convolution, self).__init__()
+        self.conv = nn.Conv2d(
+            in_channels=1, out_channels=3, kernel_size=5, stride=1)
+
+    def forward(self, x):
+        x = self.conv(x)
+        return x
+
+
 def main():
     training_samples, training_labels = data_loader.loadTrainingSet()
     testing_samples, testing_labels = data_loader.loadTestingSet()
-    training_samples = training_samples[:, :, :, newaxis]
+    # training_samples = training_samples[:, newaxis, :, :]
     training_samples = torch.from_numpy(training_samples).cuda()
-    conv1 = torch.nn.Conv2d(
-        in_channels=1, out_channels=3, kernel_size=3, stride=1).cuda()
-    
-    for i in training_samples:
-
-        x = functional.relu(conv1(i))
-        print(x)
+  
 
 
 if __name__ == '__main__':
