@@ -30,25 +30,26 @@ class NORB(Dataset):
     def loadTrainingData(self):
         self.train_data, self.train_labels, self.train_info = self.loadFromTorchFile(
             self.training_file)
-        self.performAssertionChecks(
+        self.train_data, self.train_labels, self.train_info = self.performAssertionChecksAndExpandLabelset(
             self.train_data, self.train_labels, self.train_info)
 
     def loadTestingData(self):
         self.test_data, self.test_labels, self.test_info = self.loadFromTorchFile(
             self.testing_file)
-        self.performAssertionChecks(
+        self.test_data, self.test_labels, self.test_info = self.performAssertionChecksAndExpandLabelset(
             self.test_data, self.test_labels, self.test_info)
 
     def loadFromTorchFile(self, filename):
         return torch.load(os.path.join(os.getcwd()+self.processedDirectory+filename))
 
-    def performAssertionChecks(self, data, labels, info):
+    def performAssertionChecksAndExpandLabelset(self, data, labels, info):
         size = len(labels)
         assert size == len(info)
         assert size*2 == len(data)
         labels = labels.view(
             size, 1).repeat(1, 2).view(2*size, 1)
         info = info.repeat(1, 2).view(2*size, 4)
+        return data, labels, info
 
     def __getitem__(self, index):
         img, target = self.train_data[index], self.train_labels[index]
