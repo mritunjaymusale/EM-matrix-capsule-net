@@ -1,5 +1,4 @@
 from torch import nn
-import torch
 
 kernel_size = 1
 stride = 1
@@ -18,5 +17,7 @@ activation = nn.Sequential(nn.Conv2d(
 
 
 def primaryCapsules(current_input):
-    return torch.cat([pose(current_input), activation(current_input)], dim=1)
-    
+    # change the shape from (batch_size,512,14,14) to (batch_size,32, 4, 4, 14, 14)
+    transformed_poses = pose(current_input).view(
+        current_input.shape[0], 32, 4, 4, 14, 14)
+    return transformed_poses, activation(current_input)
