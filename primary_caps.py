@@ -1,4 +1,5 @@
 from torch import nn
+import torch
 
 kernel_size = 1
 stride = 1
@@ -17,6 +18,7 @@ activation = nn.Sequential(nn.Conv2d(
 
 
 def primaryCapsules(current_input):
-    transformed_poses = pose(current_input)
-    transformed_activation = activation(current_input)
+    transformed_poses = pose(current_input).cuda()
+    transformed_activation = activation(current_input).cuda()
+    transformed_poses = transformed_poses.type(torch.cuda.FloatTensor)
     return transformed_poses, transformed_activation
