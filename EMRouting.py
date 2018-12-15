@@ -4,11 +4,12 @@ import math
 
 
 class EMRouting():
-    def __init__(self, ):
+    def __init__(self, device="cuda"):
 
         self.sigmoid = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=2)
         self.ln_2pi = math.log(2*math.pi)
+        self.device =device
 
     def m_step(self, a_in, r, v, eps, b, B, C, psize, beta_a, beta_u, _lambda):
         
@@ -41,12 +42,11 @@ class EMRouting():
         return r
 
     def caps_em_routing(self, v, a_in, C, eps, beta_a, beta_u, _lambda, iters):
-        
         b, B, c, psize = v.shape
         assert c == C
         assert (b, B, 1) == a_in.shape
 
-        if type(a_in) == torch.cuda.FloatTensor:
+        if self.device == "cuda":
             r = torch.cuda.FloatTensor(b, B, C).fill_(1./C)
         else:
             r = torch.FloatTensor(b, B, C).fill_(1./C)

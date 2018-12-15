@@ -8,9 +8,9 @@ from EMRouting import EMRouting
 
 
 class ClassCaps(nn.Module):
-    
+
     def __init__(self, B=32, C=32, K=3, P=4, stride=2, iters=3,
-                 coor_add=False, w_shared=False):
+                 coor_add=False, w_shared=False, device="cuda"):
         super(ClassCaps, self).__init__()
         # TODO: lambda scheduler
 
@@ -36,10 +36,11 @@ class ClassCaps(nn.Module):
         # and for the whole layer is 4*4*k*k*B*C,
         # which are stated at https://openreview.net/forum?id=HJWLfGWRb&noteId=r17t2UIgf
         self.weights = nn.Parameter(torch.randn(1, K*K*B, C, P, P))
-        self.EM = EMRouting()
+        self.device = device
+        self.EM = EMRouting(self.device)
 
     def transform_view(self, x, w, C, P, w_shared=False):
-        
+
         b, B, psize = x.shape
         assert psize == P*P
 
@@ -55,13 +56,15 @@ class ClassCaps(nn.Module):
         return v
 
     def add_coord(self, v, b, h, w, B, C, psize):
-        
+
         assert h == w
         v = v.view(b, h, w, B, C, psize)
         coor = 1. * torch.arange(h) / h
-        if type(v) == torch.cuda.FloatTensor:
-            coor_h = torch.cuda.FloatTensor(1, h, 1, 1, 1, self.psize).fill_(0.)
-            coor_w = torch.cuda.FloatTensor(1, 1, w, 1, 1, self.psize).fill_(0.)
+        if self.device == "cuda":
+            coor_h = torch.cuda.FloatTensor(
+                1, h, 1, 1, 1, self.psize).fill_(0.)
+            coor_w = torch.cuda.FloatTensor(
+                1, 1, w, 1, 1, self.psize).fill_(0.)
         else:
             coor_h = torch.FloatTensor(1, h, 1, 1, 1, self.psize).fill_(0.)
             coor_w = torch.FloatTensor(1, 1, w, 1, 1, self.psize).fill_(0.)

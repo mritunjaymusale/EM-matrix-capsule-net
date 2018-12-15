@@ -72,7 +72,6 @@ def main():
         torch.cuda.manual_seed(1337)
 
     device = torch.device("cuda" if args.cuda else "cpu")
-
     # datasets
     number_of_output_classes, training_dataset, testing_dataset = utils.load_dataset(
         args)
@@ -81,10 +80,10 @@ def main():
     A, B, C, D = 64, 8, 16, 16
     # A, B, C, D = 32, 32, 32, 32
     model = capsules(A=A, B=B, C=C, D=D, E=number_of_output_classes,
-                     iters=args.em_iters).to(device)
+                     iters=args.em_iters,device=device).to(device)
 
     criterion = SpreadLoss(
-        number_of_output_classes=number_of_output_classes, m_min=0.2, m_max=0.9)
+        number_of_output_classes=number_of_output_classes, m_min=0.2, m_max=0.9,device=device)
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, 'max', patience=1)
