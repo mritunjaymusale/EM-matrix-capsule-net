@@ -3,5 +3,7 @@
 __pycache__
 data
 .vscode
+.vscode/.ropeproject/**
 .vscode/.ropeproject
 temp.py
+saved_model
