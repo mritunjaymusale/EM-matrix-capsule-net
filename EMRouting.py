@@ -4,12 +4,12 @@ import math
 
 
 class EMRouting():
-    def __init__(self, device="cuda"):
+    def __init__(self, cuda = True):
 
         self.sigmoid = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=2)
         self.ln_2pi = math.log(2*math.pi)
-        self.device =device
+        self.cuda =cuda
 
     def m_step(self, a_in, r, v, eps, b, B, C, psize, beta_a, beta_u, _lambda):
         
@@ -46,7 +46,7 @@ class EMRouting():
         assert c == C
         assert (b, B, 1) == a_in.shape
 
-        if self.device == "cuda":
+        if self.cuda:
             r = torch.cuda.FloatTensor(b, B, C).fill_(1./C)
         else:
             r = torch.FloatTensor(b, B, C).fill_(1./C)

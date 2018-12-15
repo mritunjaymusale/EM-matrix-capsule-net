@@ -9,7 +9,7 @@ from EMRouting import EMRouting
 class ConvCaps(nn.Module):
     
 
-    def __init__(self, B=32, C=32, K=3, P=4, stride=2, iters=3,device= "cuda"):
+    def __init__(self, B=32, C=32, K=3, P=4, stride=2, iters=3,cuda = True):
         super(ConvCaps, self).__init__()
         # TODO: lambda scheduler
         
@@ -35,8 +35,8 @@ class ConvCaps(nn.Module):
         # and for the whole layer is 4*4*k*k*B*C,
         # which are stated at https://openreview.net/forum?id=HJWLfGWRb&noteId=r17t2UIgf
         self.weights = nn.Parameter(torch.randn(1, K*K*B, C, P, P))
-        self.device = device
-        self.EM = EMRouting(device=self.device)
+        self.cuda = cuda
+        self.EM = EMRouting(cuda=self.cuda)
 
     
 

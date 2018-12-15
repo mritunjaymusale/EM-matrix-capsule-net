@@ -10,7 +10,7 @@ from EMRouting import EMRouting
 class ClassCaps(nn.Module):
 
     def __init__(self, B=32, C=32, K=3, P=4, stride=2, iters=3,
-                 coor_add=False, w_shared=False, device="cuda"):
+                 coor_add=False, w_shared=False,cuda= True):
         super(ClassCaps, self).__init__()
         # TODO: lambda scheduler
 
@@ -36,8 +36,8 @@ class ClassCaps(nn.Module):
         # and for the whole layer is 4*4*k*k*B*C,
         # which are stated at https://openreview.net/forum?id=HJWLfGWRb&noteId=r17t2UIgf
         self.weights = nn.Parameter(torch.randn(1, K*K*B, C, P, P))
-        self.device = device
-        self.EM = EMRouting(self.device)
+        self.cuda = cuda
+        self.EM = EMRouting(self.cuda)
 
     def transform_view(self, x, w, C, P, w_shared=False):
 
@@ -60,7 +60,7 @@ class ClassCaps(nn.Module):
         assert h == w
         v = v.view(b, h, w, B, C, psize)
         coor = 1. * torch.arange(h) / h
-        if self.device == "cuda":
+        if self.cuda:
             coor_h = torch.cuda.FloatTensor(
                 1, h, 1, 1, 1, self.psize).fill_(0.)
             coor_w = torch.cuda.FloatTensor(
