@@ -86,8 +86,7 @@ def main():
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
 
-    parser.add_argument('--save-model', action='store_true', default=False,
-                        help='For Saving the current Model')
+    
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -118,8 +117,8 @@ def main():
         train(args, model, device, train_loader, optimizer, epoch)
         test(args, model, device, test_loader)
 
-    if (args.save_model):
-        torch.save(model.state_dict(), "./saved_model/mnist_cnn.pth")
+    
+    torch.save(model.state_dict(), "./saved_model/mnist_cnn.pth")
 
 
 if __name__ == '__main__':

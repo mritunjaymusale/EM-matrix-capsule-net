@@ -1,111 +1,111 @@
 from __future__ import print_function
-import os
-import time
+import argparse
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
+from torchvision import datasets, transforms
 from CapsNet import capsules
 
-from SpreadLoss import SpreadLoss
-import utils
+def one_hot_embedding(labels, num_classes):
+    #check if given data is cuda or not the perform one hot on it
+    y = torch.eye(num_classes).cuda()
+    return y[labels]
 
 
-def train(train_loader, model, criterion, optimizer, epoch, device):
-
+def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
-    train_len = len(train_loader)
-    training_accuracy = 0
+    correct = 0
 
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        r = (1.*batch_idx + (epoch-1)*train_len) / (args.epochs*train_len)
-        loss = criterion(output, target, r)
-        accuracy = utils.calculate_accuracy(output, target)
+        target = one_hot_embedding(target,num_classes=10)
+        loss = F.mse_loss(output, target)
         loss.backward()
         optimizer.step()
-
-        training_accuracy += accuracy[0].item()
-        if batch_idx % 10 == 0:
-            print('Train Epoch: {}\t[{}/{} ({:.0f}%)]\t'
-                  'Loss: {:.6f}\tAccuracy: {:.6f}\t'.format(
-                      epoch, batch_idx * len(data), len(train_loader.dataset),
-                      100. * batch_idx / len(train_loader),
-                      loss.item(), accuracy[0].item()))
-    return training_accuracy
+        
+        
+        if batch_idx % args.log_interval == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(data), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), loss.item()))
 
 
-def test(test_loader, model, criterion, device):
+def test(args, model, device, test_loader):
     model.eval()
     test_loss = 0
-    testing_accuracy = 0
-    test_len = len(test_loader)
+    correct = 0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            test_loss += criterion(output, target, r=1).item()
-            testing_accuracy += utils.calculate_accuracy(output, target)[
-                0].item()
+            # sum up batch loss
+            test_loss += F.nll_loss(output, target, reduction='sum').item()
+            # get the index of the max log-probability
+            pred = output.max(1, keepdim=True)[1]
+            correct += pred.eq(target.view_as(pred)).sum().item()
 
-    test_loss /= test_len
-    testing_accuracy /= test_len
-    print('\nTest set: Average loss: {:.6f}, Accuracy: {:.6f} \n'.format(
-        test_loss, testing_accuracy))
-    return testing_accuracy
+    test_loss /= len(test_loader.dataset)
+
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        test_loss, correct, len(test_loader.dataset),
+        100. * correct / len(test_loader.dataset)))
 
 
 def main():
-    global args
-
     # Training settings
-    parser = utils.get_settings()
+    parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser.add_argument('--batch-size', type=int, default=128, metavar='N',
+                        help='input batch size for training (default: 64)')
+    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
+                        help='input batch size for testing (default: 1000)')
+    parser.add_argument('--epochs', type=int, default=5, metavar='N',
+                        help='number of epochs to train (default: 10)')
+    parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
+                        help='learning rate (default: 0.01)')
+    parser.add_argument('--momentum', type=float, default=0.5, metavar='M',
+                        help='SGD momentum (default: 0.5)')
+    parser.add_argument('--no-cuda', action='store_true', default=False,
+                        help='disables CUDA training')
+    parser.add_argument('--seed', type=int, default=1337, metavar='S',
+                        help='random seed (default: 1)')
+    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+                        help='how many batches to wait before logging training status')
 
     args = parser.parse_args()
-    args.cuda = not args.no_cuda and torch.cuda.is_available()
+    use_cuda = not args.no_cuda and torch.cuda.is_available()
 
-    torch.manual_seed(1337)
-    if args.cuda:
-        torch.cuda.manual_seed(1337)
+    torch.manual_seed(args.seed)
 
-    device = torch.device("cuda" if args.cuda else "cpu")
-    cuda=False
-    if args.cuda:
-        cuda = True
-    else :
-        cuda = False
-    # datasets
-    number_of_output_classes, training_dataset, testing_dataset = utils.load_dataset(
-        args)
+    device = torch.device("cuda" if use_cuda else "cpu")
 
-    # architecture size
+    kwargs = {'num_workers': 1} if use_cuda else {}
+    train_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('./data/mnist', train=True, download=True,
+                       transform=transforms.Compose([
+                           transforms.ToTensor(),
+                           transforms.Normalize((0.1307,), (0.3081,))
+                       ])),
+        batch_size=args.batch_size, shuffle=True, **kwargs)
+    test_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('./data/mnist', train=False, transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])),
+        batch_size=args.test_batch_size, shuffle=True, **kwargs)
+
     A, B, C, D = 64, 8, 16, 16
-    # A, B, C, D = 32, 32, 32, 32
-    model = capsules(A=A, B=B, C=C, D=D, E=number_of_output_classes,
-                     iters=args.em_iters,cuda=cuda).to(device)
+    model = capsules(A=A, B=B, C=C, D=D, E=10,
+                     iters=2, cuda=use_cuda).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr,)
 
-    criterion = SpreadLoss(
-        number_of_output_classes=number_of_output_classes, m_min=0.2, m_max=0.9,cuda=cuda)
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, 'max', patience=1)
-
-    best_accuracy = test(testing_dataset, model, criterion, device)
     for epoch in range(1, args.epochs + 1):
-        accuracy = train(training_dataset, model, criterion,
-                         optimizer, epoch, device)
-        accuracy /= len(training_dataset)
-        scheduler.step(accuracy)
-        best_accuracy = max(best_accuracy, test(
-            testing_dataset, model, criterion, device))
-    best_accuracy = max(best_accuracy, test(
-        testing_dataset, model, criterion, device))
-    print('best test accuracy: {:.6f}'.format(best_accuracy))
+        train(args, model, device, train_loader, optimizer, epoch)
+        test(args, model, device, test_loader)
 
-    utils.save_model(model, args)
+    torch.save(model.state_dict(), "./mnist_capsules.pth")
 
 
 if __name__ == '__main__':
