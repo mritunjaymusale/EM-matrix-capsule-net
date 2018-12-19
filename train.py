@@ -7,13 +7,15 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from CapsNet import capsules
 
-def one_hot_embedding(labels, num_classes):
-    #check if given data is cuda or not the perform one hot on it
-    y = torch.eye(num_classes).cuda()
+def one_hot_embedding(labels, num_classes,use_cuda):
+    if use_cuda:
+        y = torch.eye(num_classes).cuda()
+    else:
+        y = torch.eye(num_classes)
     return y[labels]
 
 
-def train(args, model, device, train_loader, optimizer, epoch):
+def train(args, model, device, train_loader, optimizer, epoch,use_cuda):
     model.train()
     correct = 0
 
@@ -21,7 +23,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        target = one_hot_embedding(target,num_classes=10)
+        target = one_hot_embedding(target,num_classes=10 , use_cuda= use_cuda )
         loss = F.mse_loss(output, target)
         loss.backward()
         optimizer.step()
@@ -33,7 +35,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 100. * batch_idx / len(train_loader), loss.item()))
 
 
-def test(args, model, device, test_loader):
+def test(args, model, device, test_loader,use_cuda):
     model.eval()
     test_loss = 0
     correct = 0
@@ -41,27 +43,22 @@ def test(args, model, device, test_loader):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            # sum up batch loss
-            test_loss += F.nll_loss(output, target, reduction='sum').item()
-            # get the index of the max log-probability
-            pred = output.max(1, keepdim=True)[1]
-            correct += pred.eq(target.view_as(pred)).sum().item()
+            target = one_hot_embedding(target,num_classes=10 , use_cuda= use_cuda )
+            test_loss += F.mse_loss(output, target)
 
     test_loss /= len(test_loader.dataset)
 
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+    print('Test Loss: {:.6f}'.format( test_loss.item()))
 
 
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=128, metavar='N',
+    parser.add_argument('--batch-size', type=int, default=10, metavar='N',
                         help='input batch size for training (default: 64)')
-    parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
+    parser.add_argument('--test-batch-size', type=int, default=10, metavar='N',
                         help='input batch size for testing (default: 1000)')
-    parser.add_argument('--epochs', type=int, default=5, metavar='N',
+    parser.add_argument('--epochs', type=int, default=10, metavar='N',
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--lr', type=float, default=0.01, metavar='LR',
                         help='learning rate (default: 0.01)')
@@ -102,8 +99,8 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=args.lr,)
 
     for epoch in range(1, args.epochs + 1):
-        train(args, model, device, train_loader, optimizer, epoch)
-        test(args, model, device, test_loader)
+        train(args, model, device, train_loader, optimizer, epoch,use_cuda)
+        test(args, model, device, test_loader,use_cuda)
 
     torch.save(model.state_dict(), "./mnist_capsules.pth")
 
