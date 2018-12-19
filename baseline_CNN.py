@@ -23,11 +23,13 @@ class Net(nn.Module):
         x = F.max_pool2d(x, 2)
         x = F.relu(self.conv2(x))
         x = F.max_pool2d(x, 2)
-        x = x.view(x.size(0), -1)        
+        x = x.view(x.size(0), -1)
         x = F.relu(self.fc1(x))
-        x = self.dropout(x)        
+        x = self.dropout(x)
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
+
+
 
 
 def train(args, model, device, train_loader, optimizer, epoch):
@@ -36,7 +38,10 @@ def train(args, model, device, train_loader, optimizer, epoch):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.nll_loss(output, target)
+        target = target.type(torch.cuda.LongTensor)
+        criterion = nn.CrossEntropyLoss()
+
+        loss = criterion(output, target)
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
@@ -53,17 +58,13 @@ def test(args, model, device, test_loader):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            # sum up batch loss
-            test_loss += F.nll_loss(output, target, reduction='sum').item()
-            # get the index of the max log-probability
-            pred = output.max(1, keepdim=True)[1]
-            correct += pred.eq(target.view_as(pred)).sum().item()
+           
+            criterion = nn.CrossEntropyLoss()
 
+            test_loss += criterion(output, target)
     test_loss /= len(test_loader.dataset)
 
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(test_loader.dataset),
-        100. * correct / len(test_loader.dataset)))
+    print('Test Loss: {:.6f}'.format(test_loss.item()))
 
 
 def main():
@@ -86,7 +87,6 @@ def main():
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
 
-    
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
 
@@ -117,7 +117,6 @@ def main():
         train(args, model, device, train_loader, optimizer, epoch)
         test(args, model, device, test_loader)
 
-    
     torch.save(model.state_dict(), "./saved_model/mnist_cnn.pth")
 
 
