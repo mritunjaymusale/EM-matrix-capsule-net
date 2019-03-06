@@ -7,4 +7,5 @@ data
 .vscode/.ropeproject
 temp.py
 saved_model
+**/saved_model/**
 *.pth

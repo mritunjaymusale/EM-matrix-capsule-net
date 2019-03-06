@@ -31,15 +31,29 @@ class Net(nn.Module):
 
 
 
+def one_hot_embedding(labels, num_classes):
+    shape =list(labels.shape)
+    shape.append(num_classes)
+    if labels.is_cuda:
+        y = torch.zeros(shape).cuda()
+    else:
+        y = torch.zeros(shape)
+    
+    for index in range(list(y.shape)[0]):
+        y[index][labels[index]]= 1
 
+    return y
+    
+    
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        target = target.type(torch.cuda.LongTensor)
-        criterion = nn.CrossEntropyLoss()
+        target = one_hot_embedding(target,10)
+        target = target.type(torch.cuda.FloatTensor)
+        criterion = nn.MSELoss()
 
         loss = criterion(output, target)
         loss.backward()

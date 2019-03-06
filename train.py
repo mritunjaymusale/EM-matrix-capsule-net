@@ -7,13 +7,18 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from CapsNet import capsules
 
-def one_hot_embedding(labels, num_classes,use_cuda):
-    if use_cuda:
-        y = torch.eye(num_classes).cuda()
+def one_hot_embedding(labels, num_classes):
+    shape =list(labels.shape)
+    shape.append(num_classes)
+    if labels.is_cuda:
+        y = torch.zeros(shape).cuda()
     else:
-        y = torch.eye(num_classes)
-    return y[labels]
+        y = torch.zeros(shape)
+    
+    for index in range(list(y.shape)[0]):
+        y[index][labels[index]]= 1
 
+    return y
 
 def train(args, model, device, train_loader, optimizer, epoch,use_cuda):
     model.train()
@@ -23,8 +28,9 @@ def train(args, model, device, train_loader, optimizer, epoch,use_cuda):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
-        target = one_hot_embedding(target,num_classes=10 , use_cuda= use_cuda )
-        loss = F.mse_loss(output, target)
+        target = one_hot_embedding(target,num_classes=10  )
+        criterion =nn.MSELoss()
+        loss= criterion(output, target)
         loss.backward()
         optimizer.step()
         
@@ -43,7 +49,7 @@ def test(args, model, device, test_loader,use_cuda):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(data)
-            target = one_hot_embedding(target,num_classes=10 , use_cuda= use_cuda )
+            target = one_hot_embedding(target,num_classes=10  )
             test_loss += F.mse_loss(output, target)
 
     test_loss /= len(test_loader.dataset)
